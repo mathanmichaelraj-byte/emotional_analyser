@@ -1,13 +1,23 @@
 # Emotion Analyzer Model
 
-TensorFlow Lite model for classifying user emotional states based on behavioral patterns.
+Hybrid TensorFlow Lite models for emotion classification:
+1. **Behavioral Model**: Analyzes user activity patterns
+2. **Text Model**: Analyzes user text input
+3. **Hybrid System**: Combines both for comprehensive analysis
 
-## Model Details
+## Models
 
+### Behavioral Model
 - **Input**: 20 behavioral features (float32)
 - **Output**: 6 emotion classes
-- **Size**: ~30 KB (optimized for mobile)
-- **Format**: TFLite with float16 quantization
+- **Size**: ~30 KB
+- **File**: emotion_model.tflite
+
+### Text Model
+- **Input**: Text sequence (50 tokens)
+- **Output**: 6 emotion classes
+- **Size**: Variable
+- **File**: emotion_text_model.tflite
 
 ## Emotion Classes
 
@@ -45,21 +55,38 @@ TensorFlow Lite model for classifying user emotional states based on behavioral 
 
 ## Usage
 
-### Training
+### Training Behavioral Model
 
 ```bash
-# Install dependencies
 pip install -r requirements.txt
-
-# Generate model
 python create_model.py
 ```
 
-### Validation
+### Training Text Model
 
 ```bash
-# Test model accuracy
-python validate_model.py
+python create_text_model.py
+```
+
+### Hybrid Analysis
+
+```python
+from hybrid_analyzer import HybridEmotionAnalyzer
+
+analyzer = HybridEmotionAnalyzer()
+
+# Behavioral only
+result = analyzer.hybrid_analysis(behavioral_features=[...])
+
+# Text only
+result = analyzer.hybrid_analysis(text_sequence=[...])
+
+# Both (60% behavioral, 40% text)
+result = analyzer.hybrid_analysis(
+    behavioral_features=[...],
+    text_sequence=[...],
+    behavior_weight=0.6
+)
 ```
 
 ### Adding New Emotions
@@ -73,13 +100,24 @@ python validate_model.py
 
 ## Model Performance
 
-- **Accuracy**: 100% on synthetic data
+- **Accuracy**: 100% on synthetic behavioral data
 - **Training samples**: 2000
 - **Validation split**: 20%
+- **Model validated**: Yes (see validate_model.py)
+
+## Notes
+
+- Model uses synthetic behavioral patterns optimized for user activity tracking
+- GoEmotions dataset (text-based) not directly applicable for behavioral features
+- Current model designed for 20 behavioral metrics, not text sentiment
 
 ## Files
 
-- `create_model.py` - Model training script
-- `validate_model.py` - Model validation script
-- `emotion_model.tflite` - Generated TFLite model
-- `requirements.txt` - Python dependencies
+- `create_model.py` - Behavioral model training
+- `create_text_model.py` - Text model training
+- `hybrid_analyzer.py` - Hybrid analysis system
+- `validate_model.py` - Model validation
+- `emotion_model.tflite` - Behavioral model
+- `emotion_text_model.tflite` - Text model
+- `tokenizer.json` - Text tokenizer
+- `requirements.txt` - Dependencies

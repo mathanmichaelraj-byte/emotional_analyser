@@ -1,2 +1,5 @@
 #Tensor Flow Models
 *.tflite
+
+#csv
+*.csv

@@ -43,13 +43,16 @@ padded = pad_sequences(sequences, maxlen=50, padding='post', truncating='post')
 
 y_categorical = tf.keras.utils.to_categorical(labels, 6)
 
-# Build model (simpler architecture for TFLite compatibility)
+# Build model (deeper architecture for better accuracy)
 model = tf.keras.Sequential([
-    tf.keras.layers.Embedding(5000, 64, input_length=50),
+    tf.keras.layers.Embedding(5000, 128, input_length=50),
+    tf.keras.layers.SpatialDropout1D(0.2),
     tf.keras.layers.GlobalAveragePooling1D(),
-    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Dropout(0.5),
-    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Dropout(0.3),
     tf.keras.layers.Dense(6, activation='softmax')
 ])
@@ -62,9 +65,9 @@ X_train, X_val, y_train, y_val = train_test_split(padded, y_categorical, test_si
 history = model.fit(
     X_train, y_train,
     validation_data=(X_val, y_val),
-    epochs=10,
+    epochs=30,
     batch_size=64,
-    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)],
+    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)],
     verbose=1
 )
 

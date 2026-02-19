@@ -20,7 +20,7 @@ with open('tokenizer.json', 'r') as f:
     tokenizer = tokenizer_from_json(json.load(f))
 
 # Load emotions
-with open('emotions.json', 'r') as f:
+with open('go_emotions_dataset.csv', 'r') as f:
     emotions = json.load(f)
 
 def analyze_text(text):

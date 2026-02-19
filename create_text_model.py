@@ -45,18 +45,13 @@ padded = pad_sequences(sequences, maxlen=50, padding='post', truncating='post')
 
 y_categorical = tf.keras.utils.to_categorical(labels, len(emotion_cols))
 
-# Build model
+# Build model (simpler architecture for TFLite compatibility)
 model = tf.keras.Sequential([
-    tf.keras.layers.Embedding(10000, 128, input_length=50),
-    tf.keras.layers.SpatialDropout1D(0.2),
+    tf.keras.layers.Embedding(5000, 64, input_length=50),
     tf.keras.layers.GlobalAveragePooling1D(),
-    tf.keras.layers.Dense(256, activation='relu'),
-    tf.keras.layers.BatchNormalization(),
-    tf.keras.layers.Dropout(0.5),
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.BatchNormalization(),
-    tf.keras.layers.Dropout(0.4),
     tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dropout(0.5),
+    tf.keras.layers.Dense(32, activation='relu'),
     tf.keras.layers.Dropout(0.3),
     tf.keras.layers.Dense(len(emotion_cols), activation='softmax')
 ])
@@ -67,10 +62,14 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
 # Train
 X_train, X_val, y_train, y_val = train_test_split(padded, y_categorical, test_size=0.2, random_state=42, stratify=labels)
 
-history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=50, batch_size=64,
-                   callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=7, restore_best_weights=True),
-                             tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.00001)],
-                   verbose=1)
+history = model.fit(
+    X_train, y_train,
+    validation_data=(X_val, y_val),
+    epochs=10,
+    batch_size=64,
+    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)],
+    verbose=1
+)
 
 # Evaluate
 val_acc = model.evaluate(X_val, y_val, verbose=0)[1]

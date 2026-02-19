@@ -1,11 +1,12 @@
 """
-Text Emotion Classifier - GoEmotions Dataset
-Classifies text into 6 primary emotion categories
+Text Emotion Model Training
+Uses GoEmotions dataset emotions directly
 """
 
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+import json
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -13,35 +14,36 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 # Load dataset
 df = pd.read_csv('go_emotions_dataset.csv')
 
-# Use top 6 emotions from GoEmotions
-emotion_cols = ['neutral', 'joy', 'sadness', 'anger', 'fear', 'surprise']
+# Get all emotion columns (excluding metadata)
+emotion_cols = ['admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring', 
+                'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval', 
+                'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief', 
+                'joy', 'love', 'nervousness', 'optimism', 'pride', 'realization', 
+                'relief', 'remorse', 'sadness', 'surprise', 'neutral']
 
-# Create single label (pick dominant emotion)
+# Get primary emotion for each text
 def get_primary_emotion(row):
     for i, col in enumerate(emotion_cols):
         if row[col] == 1:
             return i
-    return 0  # default to neutral
+    return 27  # neutral as default
 
-df['emotion_label'] = df.apply(get_primary_emotion, axis=1)
+df['label'] = df.apply(get_primary_emotion, axis=1)
 
-# Filter to only include samples with our 6 emotions
-df = df[df['emotion_label'].isin([0, 1, 2, 3, 4, 5])]
-
-print(f"Dataset size: {len(df)}")
-print(f"Emotion distribution:\n{df['emotion_label'].value_counts()}")
-
-# Prepare text data
-texts = df['text'].values
-labels = df['emotion_label'].values
+print(f"Dataset: {len(df)} samples")
+print(f"Emotions: {len(emotion_cols)}")
+print(f"Distribution:\n{df['label'].value_counts()}")
 
 # Tokenize
+texts = df['text'].values
+labels = df['label'].values
+
 tokenizer = Tokenizer(num_words=10000, oov_token='<OOV>')
 tokenizer.fit_on_texts(texts)
 sequences = tokenizer.texts_to_sequences(texts)
 padded = pad_sequences(sequences, maxlen=50, padding='post', truncating='post')
 
-y_categorical = tf.keras.utils.to_categorical(labels, 6)
+y_categorical = tf.keras.utils.to_categorical(labels, len(emotion_cols))
 
 # Build model
 model = tf.keras.Sequential([
@@ -56,33 +58,19 @@ model = tf.keras.Sequential([
     tf.keras.layers.Dropout(0.4),
     tf.keras.layers.Dense(64, activation='relu'),
     tf.keras.layers.Dropout(0.3),
-    tf.keras.layers.Dense(6, activation='softmax')
+    tf.keras.layers.Dense(len(emotion_cols), activation='softmax')
 ])
 
-model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-    loss='categorical_crossentropy',
-    metrics=['accuracy']
-)
-
-model.summary()
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+              loss='categorical_crossentropy', metrics=['accuracy'])
 
 # Train
-X_train, X_val, y_train, y_val = train_test_split(
-    padded, y_categorical, test_size=0.2, random_state=42, stratify=labels
-)
+X_train, X_val, y_train, y_val = train_test_split(padded, y_categorical, test_size=0.2, random_state=42, stratify=labels)
 
-history = model.fit(
-    X_train, y_train,
-    validation_data=(X_val, y_val),
-    epochs=50,
-    batch_size=64,
-    callbacks=[
-        tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=7, restore_best_weights=True),
-        tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.00001)
-    ],
-    verbose=1
-)
+history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=50, batch_size=64,
+                   callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=7, restore_best_weights=True),
+                             tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.00001)],
+                   verbose=1)
 
 # Evaluate
 val_acc = model.evaluate(X_val, y_val, verbose=0)[1]
@@ -96,11 +84,12 @@ tflite_model = converter.convert()
 with open('emotion_text_model.tflite', 'wb') as f:
     f.write(tflite_model)
 
-# Save tokenizer
-import json
-tokenizer_json = tokenizer.to_json()
+# Save tokenizer and emotion list
 with open('tokenizer.json', 'w') as f:
-    json.dump(tokenizer_json, f)
+    json.dump(tokenizer.to_json(), f)
 
-print(f"\nText model saved: emotion_text_model.tflite ({len(tflite_model)/1024:.2f} KB)")
+with open('emotions.json', 'w') as f:
+    json.dump(emotion_cols, f)
+
+print(f"Model saved: emotion_text_model.tflite ({len(tflite_model)/1024:.2f} KB)")
 print(f"Emotions: {emotion_cols}")
